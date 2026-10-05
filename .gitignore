@@ -1,0 +1,22 @@
+# Java / Maven
+backend/target/
+*.class
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# Local app data and temporary package-manager files
+application-data/
+.npm-cache/
+.pnpm-cache/
+.pnpm-store/
+.tools/
+node_modules/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
