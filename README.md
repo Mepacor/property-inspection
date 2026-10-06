@@ -2,6 +2,8 @@
 
 A local-first property inspection app built with Spring Boot and React.
 
+See [the backend architecture guide](docs/backend-architecture.md) for package responsibilities and dependency rules.
+
 ## Requirements
 
 - Java 25

@@ -16,10 +16,13 @@
 
 ## Architecture
 
-- Follow the existing project structure. Keep clear application, domain, and infrastructure boundaries, using ports and adapters where they fit the current design.
-- Application use cases coordinate workflows; keep business rules in the domain. Keep the domain independent of infrastructure technologies.
-- Controllers and other infrastructure adapters should translate external inputs and outputs, then delegate. Keep business workflows and rules out of controllers.
-- Follow existing conventions for use case and repository interfaces; do not impose a new folder or interface structure.
+- Keep use cases in `com.propertyinspection.application`; name them after the business operation (for example, `GetCustomers`) and have them implement the shared `UseCase` contract.
+- Keep domain models, business rules, domain services, and repository ports in `com.propertyinspection.domain`. Domain code must remain independent of application, infrastructure, and framework types.
+- Keep framework-specific and external-system code in `com.propertyinspection.infrastructure`, including inbound web adapters and outbound persistence or messaging adapters.
+- Inbound adapters translate requests and responses, then call application use cases. Keep business workflows and rules out of controllers.
+- Repository ports belong to the domain; persistence adapters in infrastructure implement those ports.
+- Dependencies point inward: application may depend on domain; infrastructure may depend on application and domain; domain must not depend on either.
+- Keep the Spring Boot entry point in infrastructure and explicitly scan `com.propertyinspection` so all layers are discovered.
 
 ## Test conventions
 
