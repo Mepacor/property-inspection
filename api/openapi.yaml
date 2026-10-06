@@ -1,0 +1,330 @@
+openapi: 3.1.0
+info:
+  title: Property Inspection API
+  version: 0.1.0
+  description: |
+    Initial local-first API contract for creating and reading inspection requests.
+
+    Conventions: requests and responses use `application/json`, field names are
+    camelCase, and timestamps are RFC 3339 UTC instants. The server assigns an
+    `id`, `status`, `createdAt`, and `updatedAt`; clients do not send those
+    values when creating a request. `requestedPeriod` intentionally remains
+    free text so a customer can express an availability window without a
+    scheduling model.
+
+    Persistence recommendation (not implemented by this contract): use an
+    embedded SQLite database for one user on one computer. Keep the database
+    outside the repository and build output in the operating system's local
+    application-data directory, for example
+    `%LOCALAPPDATA%/PropertyInspection/property-inspection.db` on Windows.
+    The database file is durable storage, so reopening the application uses the
+    same file and retains requests across restarts. When persistence is added,
+    expose its repository port from the domain and implement the SQLite adapter
+    in infrastructure, consistent with the backend architecture guide. This
+    issue adds neither that adapter nor a database dependency.
+servers:
+  - url: http://localhost:8080
+    description: Local Spring Boot backend
+paths:
+  /api/inspection-requests:
+    post:
+      summary: Create an inspection request
+      operationId: createInspectionRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInspectionRequest'
+            examples:
+              apartmentExitInspection:
+                $ref: '#/components/examples/CreateApartmentExitInspectionRequest'
+      responses:
+        '201':
+          description: Inspection request created
+          headers:
+            Location:
+              description: URL of the created inspection request
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectionRequest'
+              examples:
+                createdRequest:
+                  $ref: '#/components/examples/CreatedApartmentExitInspectionRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      summary: List inspection requests
+      operationId: listInspectionRequests
+      responses:
+        '200':
+          description: Inspection requests, ordered by creation time descending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectionRequestList'
+              examples:
+                oneRequest:
+                  value:
+                    items:
+                      - id: 7f561b75-cdcd-4e7c-911f-6c33a8a6f3d1
+                        customer:
+                          name: Alex Morgan
+                          email: alex.morgan@example.test
+                          phone: '+49 30 1234567'
+                        property:
+                          address:
+                            streetAddress: Exampleallee 12, 3rd floor
+                            postalCode: '10115'
+                            city: Berlin
+                          type: APARTMENT
+                        inspectionType: EXIT
+                        reason: Document the condition before handing back the apartment.
+                        requestedPeriod: Weekdays after 16:00 during the second half of October.
+                        status: PENDING
+                        createdAt: '2026-10-06T17:15:30Z'
+                        updatedAt: '2026-10-06T17:15:30Z'
+  /api/inspection-requests/{id}:
+    get:
+      summary: Get an inspection request by identifier
+      operationId: getInspectionRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Server-assigned inspection request identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inspection request found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectionRequest'
+              examples:
+                request:
+                  $ref: '#/components/examples/CreatedApartmentExitInspectionRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  schemas:
+    CreateInspectionRequest:
+      type: object
+      required:
+        - customer
+        - property
+        - inspectionType
+        - reason
+        - requestedPeriod
+      properties:
+        customer:
+          $ref: '#/components/schemas/CustomerContact'
+        property:
+          $ref: '#/components/schemas/Property'
+        inspectionType:
+          $ref: '#/components/schemas/InspectionType'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Customer's reason for requesting the inspection.
+        requestedPeriod:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Human-readable availability or desired timing; it is not a booking.
+    CustomerContact:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - phone
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Contact phone number in the format supplied by the customer.
+    Property:
+      type: object
+      additionalProperties: false
+      required:
+        - address
+        - type
+      properties:
+        address:
+          $ref: '#/components/schemas/PropertyAddress'
+        type:
+          $ref: '#/components/schemas/PropertyType'
+    PropertyAddress:
+      type: object
+      additionalProperties: false
+      required:
+        - streetAddress
+        - postalCode
+        - city
+      properties:
+        streetAddress:
+          type: string
+          minLength: 1
+          maxLength: 300
+        postalCode:
+          type: string
+          minLength: 1
+          maxLength: 30
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+    PropertyType:
+      type: string
+      enum: [APARTMENT, HOUSE, OTHER]
+    InspectionType:
+      type: string
+      enum: [ENTRY, EXIT, WORKS]
+    InspectionRequestStatus:
+      type: string
+      description: The workflow state assigned and maintained by the server.
+      enum: [PENDING, SCHEDULED, COMPLETED, CANCELLED]
+    InspectionRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateInspectionRequest'
+        - type: object
+          required:
+            - id
+            - status
+            - createdAt
+            - updatedAt
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/InspectionRequestStatus'
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+      unevaluatedProperties: false
+    InspectionRequestList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectionRequest'
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [timestamp, status, error, message]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          enum: [400, 404]
+        error:
+          type: string
+          enum: [Bad Request, Not Found]
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          description: Present when a request field fails validation.
+          items:
+            $ref: '#/components/schemas/FieldValidationError'
+    FieldValidationError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: JSON field path that failed validation.
+        message:
+          type: string
+  responses:
+    BadRequest:
+      description: Request body is missing or fails validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            missingEmail:
+              value:
+                timestamp: '2026-10-06T17:15:30Z'
+                status: 400
+                error: Bad Request
+                message: Validation failed
+                fieldErrors:
+                  - field: customer.email
+                    message: must be a well-formed email address
+    NotFound:
+      description: No inspection request exists for the supplied identifier
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            requestNotFound:
+              value:
+                timestamp: '2026-10-06T17:15:30Z'
+                status: 404
+                error: Not Found
+                message: Inspection request 7f561b75-cdcd-4e7c-911f-6c33a8a6f3d1 was not found
+  examples:
+    CreateApartmentExitInspectionRequest:
+      value:
+        customer:
+          name: Alex Morgan
+          email: alex.morgan@example.test
+          phone: '+49 30 1234567'
+        property:
+          address:
+            streetAddress: Exampleallee 12, 3rd floor
+            postalCode: '10115'
+            city: Berlin
+          type: APARTMENT
+        inspectionType: EXIT
+        reason: Document the condition before handing back the apartment.
+        requestedPeriod: Weekdays after 16:00 during the second half of October.
+    CreatedApartmentExitInspectionRequest:
+      value:
+        id: 7f561b75-cdcd-4e7c-911f-6c33a8a6f3d1
+        customer:
+          name: Alex Morgan
+          email: alex.morgan@example.test
+          phone: '+49 30 1234567'
+        property:
+          address:
+            streetAddress: Exampleallee 12, 3rd floor
+            postalCode: '10115'
+            city: Berlin
+          type: APARTMENT
+        inspectionType: EXIT
+        reason: Document the condition before handing back the apartment.
+        requestedPeriod: Weekdays after 16:00 during the second half of October.
+        status: PENDING
+        createdAt: '2026-10-06T17:15:30Z'
+        updatedAt: '2026-10-06T17:15:30Z'
