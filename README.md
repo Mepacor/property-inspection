@@ -36,4 +36,6 @@ pnpm --filter property-inspection-frontend test -- --run
 pnpm --filter property-inspection-frontend build
 ```
 
+The backend verification includes unit tests and Cucumber integration scenarios. Cucumber features live in `backend/src/test/resources/features` and use Given/When/Then steps as executable documentation.
+
 GitHub Actions runs the backend and frontend checks for every pull request and every push to `main`.
