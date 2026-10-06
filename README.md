@@ -26,6 +26,7 @@ pnpm --filter property-inspection-frontend dev
 ```
 
 Open <http://localhost:5173>. The backend health endpoint is <http://localhost:8080/actuator/health>.
+The OpenAPI contract is available as a visual Swagger UI at <http://localhost:8080/swagger-ui/index.html> and as YAML at <http://localhost:8080/api/openapi.yaml>.
 
 ## Checks
 
