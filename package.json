@@ -1,0 +1,8 @@
+{
+  "name": "property-inspection",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24"
+  }
+}
